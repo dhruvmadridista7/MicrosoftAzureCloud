@@ -1,0 +1,13 @@
+
+
+#Input Parameters
+
+$sname = 'AVS_POC_VMware_Migration_Accelerator'
+$ResourceGroupName = 'MigrationTesting'
+$ProjectName = 'MultiVmMigration'
+$VmName = @("HDS223105","HDS223106")
+$TargetResourceGroupName = 'MigrationTesting'
+$TargetVirtualNetworkName = 'MultiVmMigration-Vnet'
+$MigratedTestVM = @("HDS223105","HDS223106")
+$TargetVMSize = @("Standard_DS2_v2","Standard_DS2_v2")
+$TargetSubnetName = @("default","default")

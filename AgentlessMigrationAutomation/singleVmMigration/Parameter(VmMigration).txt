@@ -1,0 +1,24 @@
+
+#Input Parameters
+$sname = 'AVS_POC_VMware_Migration_Accelerator'
+$ResourceGroupName = 'AzureMigrateRG'
+$ProjectName = 'azmigtest'
+$VmName = 'HDS223105'
+$TargetResourceGroupName = 'AzureMigrateRG'
+$TargetVirtualNetworkName = 'migratevnet'
+$MigratedTestVM = 'HDS223105'
+$TargetVMSize = 'Standard_DS2_v2'
+
+
+
+
+Param(
+ [string]$sname,
+ [string]$ResourceGroupName,
+ [string]$ProjectName,
+ [string]$VmName,
+ [string]$TargetResourceGroupName, 
+ [string]$TargetVirtualNetworkName,
+ [string]$MigratedTestVM,
+ [string]$TargetVMSize
+)

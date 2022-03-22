@@ -1,0 +1,142 @@
+
+#Sign in to your Microsoft Azure subscription
+Connect-AzAccount
+
+#Select your Azure subscription
+$sid=(Get-AzSubscription -SubscriptionName $sname).Id
+Set-AzContext -SubscriptionId $sid
+
+
+#4.Retrieve the Azure Migrate project
+
+# Get resource group of the Azure Migrate project
+$ResourceGroup = Get-AzResourceGroup -Name $ResourceGroupName
+
+# Get details of the Azure Migrate project
+$MigrateProject = Get-AzMigrateProject -Name $ProjectName -ResourceGroupName $ResourceGroup.ResourceGroupName
+
+# View Azure Migrate project details
+Write-Output $MigrateProject
+
+
+#5.Retrieve discovered VMs in an Azure Migrate project
+
+# Get a specific VMware VM in an Azure Migrate project
+$DiscoveredServer = Get-AzMigrateDiscoveredServer -ProjectName $MigrateProject.Name -ResourceGroupName $ResourceGroup.ResourceGroupName -DisplayName $VmName
+# View discovered server details
+Write-Output $DiscoveredServer
+
+
+
+#7.Replicate VMs
+
+#Replicate VMs with all disks
+
+# Retrieve the resource group that you want to migrate to
+$TargetResourceGroup = Get-AzResourceGroup -Name $TargetResourceGroupName
+
+# Retrieve the Azure virtual network and subnet that you want to migrate to
+$TargetVirtualNetwork = Get-AzVirtualNetwork -Name $TargetVirtualNetworkName
+
+#Based on discovered vm commands, we have to change the variable $DiscoveredServer or $DiscoveredServers.
+# Start replication for a discovered VM in an Azure Migrate project
+$MigrateJob =  New-AzMigrateServerReplication -InputObject $DiscoveredServer -TargetResourceGroupId $TargetResourceGroup.ResourceId -TargetNetworkId $TargetVirtualNetwork.Id -LicenseType NoLicenseType -OSDiskID $DiscoveredServer.Disk[0].Uuid -TargetSubnetName $TargetVirtualNetwork.Subnets[0].Name -DiskType Standard_LRS -TargetVMName $MigratedTestVM -TargetVMSize $TargetVMSize
+
+# Track job status to check for completion
+while (($MigrateJob.State -eq 'InProgress') -or ($MigrateJob.State -eq 'NotStarted')){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $MigrateJob = Get-AzMigrateJob -InputObject $MigrateJob
+}
+#Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $MigrateJob.State
+
+
+
+#8. Monitor replication
+
+# List replicating VMs and filter the result for selecting a replicating VM. This cmdlet will not return all properties of the replicating VM.
+$ReplicatingServer = Get-AzMigrateServerReplication -ProjectName $MigrateProject.Name -ResourceGroupName $ResourceGroup.ResourceGroupName -MachineName $VmName
+
+
+while ($ReplicatingServer.MigrationStateDescription -eq 'Initial replication'){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $ReplicatingServer = Get-AzMigrateServerReplication -ProjectName $MigrateProject.Name -ResourceGroupName $ResourceGroup.ResourceGroupName -MachineName $VmName
+}
+#Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $ReplicatingServer.MigrationStateDescription
+
+
+
+
+#11. Run a test migration
+
+# Retrieve the Azure virtual network created for testing
+#If you want to use different vnet for testing the migration then also you can use that, or we can use same targetVnet.
+$TestVirtualNetworkName = $TargetVirtualNetworkName
+$TestVirtualNetwork = Get-AzVirtualNetwork -Name $TestVirtualNetworkName
+
+
+# Start test migration for a replicating server
+$TestMigrationJob = Start-AzMigrateTestMigration -InputObject $ReplicatingServer -TestNetworkID $TestVirtualNetwork.Id
+
+
+# Track job status to check for completion
+while (($TestMigrationJob.State -eq 'InProgress') -or ($TestMigrationJob.State -eq 'NotStarted')){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $TestMigrationJob = Get-AzMigrateJob -InputObject $TestMigrationJob
+}
+# Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $TestMigrationJob.State
+
+
+# Clean-up test migration for a replicating server
+$CleanupTestMigrationJob = Start-AzMigrateTestMigrationCleanup -InputObject $ReplicatingServer
+
+
+# Track job status to check for completion
+while (($CleanupTestMigrationJob.State -eq "InProgress") -or ($CleanupTestMigrationJob.State -eq "NotStarted")){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $CleanupTestMigrationJob = Get-AzMigrateJob -InputObject $CleanupTestMigrationJob
+}
+# Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $CleanupTestMigrationJob.State
+
+
+
+#12. Migrate VMs
+
+
+# Start migration for a replicating server and turn off source server as part of migration
+$MigrateJob = Start-AzMigrateServerMigration -InputObject $ReplicatingServer -TurnOffSourceServer
+
+
+# Track job status to check for completion
+while (($MigrateJob.State -eq 'InProgress') -or ($MigrateJob.State -eq 'NotStarted')){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $MigrateJob = Get-AzMigrateJob -InputObject $MigrateJob
+}
+#Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $MigrateJob.State
+
+
+
+#13. Complete the migration
+
+
+# Stop replication for a migrated server
+$StopReplicationJob = Remove-AzMigrateServerReplication -InputObject $ReplicatingServer
+
+
+# Track job status to check for completion
+while (($StopReplicationJob.State -eq 'InProgress') -or ($StopReplicationJob.State -eq 'NotStarted')){
+        #If the job hasn't completed, sleep for 10 seconds before checking the job status again
+        sleep 10;
+        $StopReplicationJob = Get-AzMigrateJob -InputObject $StopReplicationJob
+}
+# Check if the Job completed successfully. The updated job state of a successfully completed job should be "Succeeded".
+Write-Output $StopReplicationJob.State
