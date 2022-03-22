@@ -1,0 +1,79 @@
+- hosts: localhost
+  connection: local
+  vars:
+    resource_group: myResourceGroup
+    vnet_name: myVNet
+    subnet_name: myAGSubnet
+    location: westus3
+    publicip_name: myAGPublicIPAddress
+    appgw_name: myAppGateway
+    aci_1_name: myACI1
+    aci_2_name: myACI2
+  tasks:
+    - name: Get info of Subnet
+      azure_rm_resource_facts:
+        api_version: '2018-08-01'
+        resource_group: "{{ resource_group }}"
+        provider: network
+        resource_type: virtualnetworks
+        resource_name: "{{ vnet_name }}"
+        subresource:
+          - type: subnets
+            name: "{{ subnet_name }}"
+      register: subnet
+
+    - name: Get info of backend server 1
+      azure_rm_resource_facts:
+        api_version: '2018-04-01'
+        resource_group: "{{ resource_group }}"
+        provider: containerinstance
+        resource_type: containergroups
+        resource_name: "{{ aci_1_name }}"
+      register: aci_1_output
+    - name: Get info of backend server 2
+      azure_rm_resource_facts:
+        api_version: '2018-04-01'
+        resource_group: "{{ resource_group }}"
+        provider: containerinstance
+        resource_type: containergroups
+        resource_name: "{{ aci_2_name }}"
+      register: aci_2_output
+
+    - name: Create instance of Application Gateway
+      azure_rm_appgateway:
+        resource_group: "{{ resource_group }}"
+        name: "{{ appgw_name }}"
+        sku:
+          name: standard_small
+          tier: standard
+          capacity: 2
+        gateway_ip_configurations:
+          - subnet:
+              id: "{{ subnet.response[0].id }}"
+            name: appGatewayIP
+        frontend_ip_configurations:
+          - public_ip_address: "{{ publicip_name }}"
+            name: appGatewayFrontendIP
+        frontend_ports:
+          - port: 80
+            name: appGatewayFrontendPort
+        backend_address_pools:
+          - backend_addresses:
+              - ip_address: "{{ aci_1_output.response[0].properties.ipAddress.ip }}"
+              - ip_address: "{{ aci_2_output.response[0].properties.ipAddress.ip }}"
+            name: appGatewayBackendPool
+        backend_http_settings_collection:
+          - port: 80
+            protocol: http
+            cookie_based_affinity: enabled
+            name: appGatewayBackendHttpSettings
+        http_listeners:
+          - frontend_ip_configuration: appGatewayFrontendIP
+            frontend_port: appGatewayFrontendPort
+            name: appGatewayHttpListener
+        request_routing_rules:
+          - rule_type: Basic
+            backend_address_pool: appGatewayBackendPool
+            backend_http_settings: appGatewayBackendHttpSettings
+            http_listener: appGatewayHttpListener
+            name: rule1

@@ -1,0 +1,33 @@
+- hosts: localhost
+  vars:
+    resource_group: myResourceGroup
+    location: westus3
+    vnet_name: myVNet
+    subnet_name: myAGSubnet
+    publicip_name: myAGPublicIPAddress
+    publicip_domain: mydomain
+  tasks:
+    - name: Create a virtual network
+      azure_rm_virtualnetwork:
+        name: "{{ vnet_name }}"
+        resource_group: "{{ resource_group }}"
+        address_prefixes_cidr:
+            - 10.1.0.0/16
+            - 172.100.0.0/16
+        dns_servers:
+            - 127.0.0.1
+            - 127.0.0.2
+
+    - name: Create a subnet
+      azure_rm_subnet:
+        name: "{{ subnet_name }}"
+        virtual_network_name: "{{ vnet_name }}"
+        resource_group: "{{ resource_group }}"
+        address_prefix_cidr: 10.1.0.0/24
+
+    - name: Create a public IP address
+      azure_rm_publicipaddress:
+        resource_group: "{{ resource_group }}"
+        allocation_method: Dynamic
+        name: "{{ publicip_name }}"
+        domain_name_label: "{{ publicip_domain }}"

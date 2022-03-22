@@ -1,0 +1,9 @@
+- hosts: localhost
+  vars:
+    resource_group: myResourceGroup
+    location: westus4
+  tasks:
+    - name: Create a resource group
+      azure_rm_resourcegroup:
+        name: "{{ resource_group }}"
+        location: "{{ location }}"
