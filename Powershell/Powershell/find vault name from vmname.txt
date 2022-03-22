@@ -1,0 +1,29 @@
+Do {
+    $VmName = Read-Host "Enter VM Name"
+} while (!$VmName)
+
+$azSubs = Get-AzSubscription | Where-Object { $_.Name -notlike "*Azure Active Directory*" }
+
+$VM = 0
+foreach ( $azSub in $azSubs ) {
+    Set-AzContext -Subscription $azSub | Out-Null
+    $VMInfo = Get-AzVM -Name $VmName
+    $Resource = $VMInfo.ResourceGroupName
+    $Resource 
+    $Location = $VMInfo.Location
+    if ($VMInfo) {
+        $VM++
+        $status = Get-AzRecoveryServicesBackupStatus -Name $VmName -ResourceGroupName $VMInfo.ResourceGroupName -Type "AzureVM"
+        If ($status.VaultId) {
+            $rsv = $status.VaultId.Split('/')[-1]    
+            Write-Output "The VM < $VmName > is member of RSV < $rsv >"    
+        }
+        If ($status.BackedUp -eq $false) {
+            Write-Output "The VM < $VmName > is not protected with Azure Backup. You should consider enabling it!" 
+        } 
+    }
+}
+
+If ($VM -eq 0) {
+    Write-Warning "The Azure VM < $VmName > cannot be found. Please check your virtual machine name!"    
+}

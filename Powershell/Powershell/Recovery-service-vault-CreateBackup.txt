@@ -1,0 +1,61 @@
+Connect-AzAccount
+$sname=Read-Host "Enter Subscription Name"
+$sid=(Get-AzSubscription -SubscriptionName $sname).Id
+Register-AzResourceProvider -ProviderNamespace "Microsoft.RecoveryServices"
+Get-AzResourceProvider -ProviderNamespace "Microsoft.RecoveryServices"
+
+
+$VmName = Read-Host "Enter VM Name"
+$VmResourceGroup = Read-Host "Enter Resource Group Name where the vm is present"
+$Location = Read-Host "Location of Resources"
+$storageaccount = Read-Host "Enter Storage account Name"
+$VaultName = Read-Host "Create a new Vault(Enter the vault Name):"
+
+
+#Create a Recovery Services vault
+New-AzRecoveryServicesVault -Name $VaultName -ResourceGroupName $VmResourceGroup -Location $Location
+$vault1 = Get-AzRecoveryServicesVault -Name $VaultName
+Set-AzRecoveryServicesBackupProperty  -Vault $vault1 -BackupStorageRedundancy GeoRedundant
+
+#Set vault context
+Get-AzRecoveryServicesVault -Name $VaultName -ResourceGroupName $VmResourceGroup | Set-AzRecoveryServicesVaultContext
+
+#Fetch the vault ID
+$targetVault = Get-AzRecoveryServicesVault -ResourceGroupName $VmResourceGroup -Name $VaultName
+$targetVault.ID
+
+
+#Create a protection policy
+Get-AzRecoveryServicesBackupProtectionPolicy -WorkloadType "AzureVM" -VaultId $targetVault.ID
+
+$schPol = Get-AzRecoveryServicesBackupSchedulePolicyObject -WorkloadType "AzureVM"
+$UtcTime = Get-Date -Date "2019-09-06 09:30:00Z"
+$UtcTime = $UtcTime.ToUniversalTime()
+$schpol.ScheduleRunTimes[0] = $UtcTime
+
+
+$retPol = Get-AzRecoveryServicesBackupRetentionPolicyObject -WorkloadType "AzureVM"
+New-AzRecoveryServicesBackupProtectionPolicy -Name "NewPolicy" -WorkloadType "AzureVM" -RetentionPolicy $retPol -SchedulePolicy $schPol -VaultId $targetVault.ID
+
+
+#Enable protection
+$pol = Get-AzRecoveryServicesBackupProtectionPolicy -Name "NewPolicy" -VaultId $targetVault.ID
+Enable-AzRecoveryServicesBackupProtection -Policy $pol -Name $VmName -ResourceGroupName $VmResourceGroup -VaultId $targetVault.ID
+
+
+#Trigger a backup
+$namedContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VmName -VaultId $targetVault.ID
+$item = Get-AzRecoveryServicesBackupItem -Container $namedContainer -WorkloadType "AzureVM" -VaultId $targetVault.ID
+$endDate = (Get-Date).AddDays(60).ToUniversalTime()
+$job = Backup-AzRecoveryServicesBackupItem -Item $item -VaultId $targetVault.ID -ExpiryDateTimeUTC $endDate
+
+Wait-AzRecoveryServicesBackupJob -Job $job -Timeout 43200 -VaultId $targetVault.ID
+
+
+
+
+
+
+
+
+

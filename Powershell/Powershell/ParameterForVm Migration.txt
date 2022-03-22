@@ -1,0 +1,11 @@
+
+
+#Input Parameters
+$sname = 
+$ResourceGroupName = 
+$ProjectName = 
+$VmName = 
+$TargetResourceGroupName = 
+$TargetVirtualNetworkName = 
+$MigratedTestVM = 
+$TargetVMSize = 'Standard_DS2_v2'

@@ -1,0 +1,13 @@
+#If this is your first time using the Azure Database for MySQL service, you must register the Microsoft.DBforMySQL resource provider.
+Register-AzResourceProvider -ProviderNamespace Microsoft.DBforMySQL
+
+Set-AzContext -SubscriptionId ee7e3998-d101-4591-8bcf-0472b1cdff01
+
+
+#Create an Azure resource group using the New-AzResourceGroup cmdlet.
+New-AzResourceGroup -Name myresourcegroup -Location westus
+
+
+#Create an Azure Database for MySQL server with the New-AzMySqlServer cmdlet.
+$Password = Read-Host -Prompt 'Please enter your password' -AsSecureString
+New-AzMySqlServer -Name mydemoserver -ResourceGroupName myresourcegroup -Sku GP_Gen5_2 -GeoRedundantBackup Enabled -Location westus -AdministratorUsername myadmin -AdministratorLoginPassword $Password

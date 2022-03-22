@@ -1,0 +1,8 @@
+Steps of Installing the Dependency agent on Windows using Powershell: 
+
+1.) Open the Powershell and perform the below two commands. 
+
+2.) Invoke-WebRequest "https://aka.ms/dependencyagentwindows" -OutFile InstallDependencyAgent-Windows.exe 
+
+3.) .\InstallDependencyAgent-Windows.exe /S 
+    (here /S Performs a silent installation with no user interaction. ) 

@@ -1,0 +1,24 @@
+connect-azaccount
+$sname= 'Azure Migrate'
+$sid=(Get-AzSubscription -SubscriptionName $sname).Id
+
+
+  $RGs = Get-AzureRMResourceGroup
+  foreach($RG in $RGs)
+  {
+    $VMs = Get-AzureRmVM -ResourceGroupName $RG.ResourceGroupName
+    foreach($VM in $VMs)
+    {
+      $VMDetail = Get-AzureRmVM -ResourceGroupName $RG.ResourceGroupName -Name $VM.Name -Status
+      $RGN = $VMDetail.ResourceGroupName  
+      $Location = $VM.Location
+      foreach ($VMStatus in $VMDetail.Statuses)
+      { 
+          $VMStatusDetail = $VMStatus.DisplayStatus
+      }
+      Write-Output "Resource Group: $RGN","Location: $Location" ,("VM Name: " + $VM.Name), "Status: $VMStatusDetail" `n
+    }
+  }
+
+
+Start-Sleep -Seconds 15
